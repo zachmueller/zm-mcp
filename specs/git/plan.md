@@ -8,6 +8,8 @@ A TypeScript/Node.js MCP server that wraps standard git operations, with a focus
 
 **Design principle — token minimization:** Every tool schema and tool output is designed to minimize token cost for the calling LLM. This means: omitting parameters that can be inferred, returning only what the LLM needs to act on, and preferring machine-readable formats over human-readable ones. This principle is referenced throughout the doc as decisions are made.
 
+**MCP SDK:** Uses `@modelcontextprotocol/sdk` (the official MCP TypeScript SDK), same as the existing ZmuellerMCP server. Server setup follows the same pattern: `McpServer` + `StdioServerTransport`, tools registered via `server.tool()` with Zod schemas.
+
 ---
 
 ## CLI Design
@@ -25,10 +27,11 @@ node dist/git/index.js [--repo <name>=<path>]... --name <prefix>
 
 ### Repo Resolution & Tool Schema Behavior
 
-- If **no** `--repo` args are given, the server defaults to the current working directory as the single implicit repo.
+- If **no** `--repo` args are given, the server defaults to the current working directory **at server startup** as the single implicit repo.
 - If **exactly one** `--repo` arg is given, that repo is used implicitly.
 - In both single-repo cases above, the `repo` parameter is **omitted entirely from all tool schemas** — it does not appear in the MCP tool definitions at all. This keeps token cost minimal when the parameter is unnecessary.
 - If **two or more** `--repo` args are given, the `repo` parameter is included in all tool schemas as a required field.
+- **All repo paths are validated as git repositories at server startup.** If any path is not a valid git repo, the server fails immediately with a descriptive error. This is fail-fast by design — a misconfigured repo should be caught before any tool calls are served.
 - Unrecognized `repo` values return a clear error rather than silently failing.
 
 ### Example Registrations
@@ -122,7 +125,7 @@ Stages specified files and creates a commit following the project's standard mes
 ```typescript
 {
   repo?: string,            // only present when multiple repos are registered
-  files: string[],          // paths to stage, relative to repo root; supports globs
+  files: string[],          // paths to stage, relative to repo root; passed directly to git add (git's own pathspec/glob expansion)
   summary: string,          // one-line action summary (e.g., "Add user auth flow")
   change_details: string[], // bullet-point list of specific changes
   workflow?: string,        // name of the workflow/rule that guided this commit (e.g., "version-bump.md")
@@ -134,7 +137,8 @@ Stages specified files and creates a commit following the project's standard mes
 
 **Behavior:**
 - Stages only the files listed in `files` (never a blanket `git add .`)
-- Errors if any listed file path does not exist or fails to stage
+- File paths are passed directly to `git add` — git handles its own pathspec and glob expansion. This uses git's native behavior, which is the most robust option (respects `.gitignore`, handles edge cases git already knows about).
+- If any path fails to stage, the commit is aborted and **all staging changes are rolled back** to the state before the tool call (via `git reset` of the staged files). No partial commits.
 - Constructs the commit message using the format described below
 - Does not push; push is a separate future operation
 
@@ -167,7 +171,7 @@ Checks out an existing branch.
 }
 ```
 
-**Output:** Confirmation of the active branch after switch; error if branch does not exist or working tree has uncommitted changes.
+**Output:** Confirmation of the active branch after switch; error if branch does not exist or if git itself rejects the checkout (e.g., conflicting uncommitted changes). Mirrors native `git checkout` behavior — untracked files that don't conflict are not treated as errors.
 
 ---
 
@@ -220,6 +224,7 @@ Prompt: Create a daily note template that includes a project tracking section an
 - The server maintains a map of `name → absolute path` built at startup from `--repo` args
 - Each tool call resolves the target repo at request time — there is no per-connection state
 - Concurrent tool calls targeting different repos are safe (no shared mutable state between repo operations)
+- **Concurrent tool calls to the same repo are serialized.** The server maintains a per-repo lock (e.g., a promise queue) so that operations like staging + committing cannot interleave. This prevents index corruption from concurrent `git add`/`git commit` calls.
 - **Single-repo mode** (0 or 1 `--repo` args): The `repo` parameter is omitted from all tool schemas entirely. All operations target the single implicit repo (cwd or the one named repo).
 - **Multi-repo mode** (2+ `--repo` args): The `repo` parameter appears as a required field in all tool schemas. The `repo` field is validated against the registered map; unrecognized values return a descriptive error.
 
@@ -237,7 +242,8 @@ Tool calls should return structured error text (not throw) in these cases:
 | Nothing to commit | Success-like response: "nothing to commit, working tree clean" |
 | Git command fails (non-zero exit) | Error: include stderr output verbatim |
 | Branch already exists (`create_branch`) | Error: branch name + suggestion to switch instead |
-| Dirty working tree (`switch_branch`) | Error: list uncommitted changes, suggest committing first |
+| Dirty working tree (`switch_branch`) | Mirrors native git behavior: error only if checkout would overwrite uncommitted changes |
+| Partial staging failure (`commit`) | Roll back all staged files to pre-call state, return error listing which paths failed |
 
 ---
 
