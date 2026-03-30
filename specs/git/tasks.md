@@ -4,15 +4,16 @@ Reference: [plan.md](plan.md)
 
 ---
 
-## Phase 1: Project Scaffolding
+## Phase 1: Project Scaffolding ✅
 
-### 1.1 Initialize project and dependencies
-- Create `package.json` with `"type": "module"` (ESM)
-- Install dependencies: `@modelcontextprotocol/sdk`, `zod`
-- Install dev dependencies: `typescript`, `@types/node`
-- Create `tsconfig.json` targeting Node 20+, ESM output to `dist/`
+### 1.1 Initialize project and dependencies ✅
+- ✅ Create `package.json` with `"type": "module"` (ESM)
+- ✅ Install dependencies: `@modelcontextprotocol/sdk`, `zod`
+- ✅ Install dev dependencies: `typescript`, `@types/node`
+- ✅ Create `tsconfig.json` targeting Node 20+, ESM output to `dist/`
+- ✅ Create `.gitignore` for `node_modules/` and `dist/`
 
-### 1.2 Create directory structure
+### 1.2 Create directory structure ✅
 ```
 src/git/
 ├── index.ts
