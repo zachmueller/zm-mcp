@@ -31,29 +31,29 @@ src/git/
 
 ---
 
-## Phase 2: Core Infrastructure
+## Phase 2: Core Infrastructure ✅
 
-### 2.1 `git-runner.ts` — Git command executor
-- Thin wrapper around `child_process.execFile` that runs `git` with given args in a given cwd
-- Returns `{ stdout: string, stderr: string }` on success
-- On non-zero exit, returns a structured error containing stderr (does not throw)
-- All calls use `execFile` (not `exec`) to avoid shell injection
+### 2.1 `git-runner.ts` — Git command executor ✅
+- ✅ Thin wrapper around `child_process.execFile` that runs `git` with given args in a given cwd
+- ✅ Returns `{ stdout: string, stderr: string }` on success
+- ✅ On non-zero exit, returns a structured error containing stderr (does not throw)
+- ✅ All calls use `execFile` (not `exec`) to avoid shell injection
 
-### 2.2 `repo-registry.ts` — Repo resolution and validation
-- Parse `--repo name=path` args into a `Map<string, string>`
-- If no `--repo` args: use `process.cwd()` (captured once at import time) as the single implicit repo
-- If one `--repo` arg: use it as the single implicit repo
-- On startup, validate every registered path by running `git rev-parse --git-dir` in it; fail with descriptive error if any path is not a git repo
-- Export a `resolveRepo(name?: string)` function that returns the absolute path, or throws a descriptive error for unknown names
-- Export a `isMultiRepo()` boolean so tool registration can decide whether to include `repo` in schemas
-- **Per-repo lock:** Export an `acquireLock(repoPath): Promise<() => void>` function that serializes concurrent calls to the same repo. Implementation: a map of repo path → promise chain (no external dependency needed).
+### 2.2 `repo-registry.ts` — Repo resolution and validation ✅
+- ✅ Parse `--repo name=path` args into a `Map<string, string>`
+- ✅ If no `--repo` args: use `process.cwd()` (captured once at import time) as the single implicit repo
+- ✅ If one `--repo` arg: use it as the single implicit repo
+- ✅ On startup, validate every registered path by running `git rev-parse --git-dir` in it; fail with descriptive error if any path is not a git repo
+- ✅ Export a `resolveRepo(name?: string)` function that returns the absolute path, or throws a descriptive error for unknown names
+- ✅ Export a `isMultiRepo()` boolean so tool registration can decide whether to include `repo` in schemas
+- ✅ **Per-repo lock:** Export an `acquireLock(repoPath): Promise<() => void>` function that serializes concurrent calls to the same repo. Implementation: a map of repo path → promise chain (no external dependency needed).
 
-### 2.3 `index.ts` — Server entry point
-- Parse CLI args (`--repo`, `--name`) using manual argv parsing (no dependency needed for two flags)
-- Validate `--name` is provided; exit with usage message if missing
-- Initialize repo registry (triggers startup validation)
-- Create `McpServer` instance, register all tools, connect `StdioServerTransport`
-- Pass `--name` prefix to commit tool registration
+### 2.3 `index.ts` — Server entry point ✅
+- ✅ Parse CLI args (`--repo`, `--name`) using manual argv parsing (no dependency needed for two flags)
+- ✅ Validate `--name` is provided; exit with usage message if missing
+- ✅ Initialize repo registry (triggers startup validation)
+- ✅ Create `McpServer` instance, register all tools, connect `StdioServerTransport`
+- ✅ Pass `--name` prefix to commit tool registration
 
 ---
 
