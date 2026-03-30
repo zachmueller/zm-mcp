@@ -82,31 +82,31 @@ Each tool follows the same pattern: define Zod schema, register via `server.tool
 
 ---
 
-## Phase 4: Write Tools
+## Phase 4: Write Tools ✅
 
-### 4.1 `commit` tool
+### 4.1 `commit` tool ✅
 This is the most complex tool. Implementation steps:
 
-1. **Acquire per-repo lock** before any git operations
-2. **Snapshot current index state** by recording which files are currently staged (`git diff --staged --name-only`) so rollback knows what to restore
-3. **Stage files:** Run `git add -- <files>` for each path in `files`
+1. ✅ **Acquire per-repo lock** before any git operations
+2. ✅ **Snapshot current index state** by recording which files are currently staged (`git diff --staged --name-only`) so rollback knows what to restore
+3. ✅ **Stage files:** Run `git add -- <files>` for each path in `files`
    - If any `git add` fails: run `git reset -- <all files from this call>` to rollback, then release lock and return error listing which paths failed
-4. **Build commit message** from `summary`, `change_details`, `workflow`, `human_input`, and the `--name` prefix, following the format in the plan
-5. **Run `git commit`** with the constructed message (pass via `-F -` on stdin to avoid shell escaping issues with `-m`)
-6. **Return** the commit hash (parse from `git rev-parse HEAD` after commit)
-7. **Release lock** in a `finally` block
+4. ✅ **Build commit message** from `summary`, `change_details`, `workflow`, `human_input`, and the `--name` prefix, following the format in the plan
+5. ✅ **Run `git commit`** with the constructed message (pass via `-F -` on stdin to avoid shell escaping issues with `-m`)
+6. ✅ **Return** the commit hash (parse from `git rev-parse HEAD` after commit)
+7. ✅ **Release lock** in a `finally` block
 
-### 4.2 `create_branch` tool
-- Accept `branch_name` and optional `from_ref`
-- Run `git branch {branch_name} [{from_ref}]`
-- On success, return branch name and the resolved ref (`git rev-parse {from_ref || HEAD}`)
-- If branch already exists, return error suggesting `switch_branch` instead
+### 4.2 `create_branch` tool ✅
+- ✅ Accept `branch_name` and optional `from_ref`
+- ✅ Run `git branch {branch_name} [{from_ref}]`
+- ✅ On success, return branch name and the resolved ref (`git rev-parse {from_ref || HEAD}`)
+- ✅ If branch already exists, return error suggesting `switch_branch` instead
 
-### 4.3 `switch_branch` tool
-- Accept `branch_name`
-- Run `git checkout {branch_name}`
-- On success, return confirmation with active branch name
-- On failure, pass through git's native error (e.g., conflicting changes, nonexistent branch)
+### 4.3 `switch_branch` tool ✅
+- ✅ Accept `branch_name`
+- ✅ Run `git checkout {branch_name}`
+- ✅ On success, return confirmation with active branch name
+- ✅ On failure, pass through git's native error (e.g., conflicting changes, nonexistent branch)
 
 ---
 

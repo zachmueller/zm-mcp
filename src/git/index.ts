@@ -5,6 +5,9 @@ import { registerStatusTool } from "./tools/status.js";
 import { registerDiffTool } from "./tools/diff.js";
 import { registerLogTool } from "./tools/log.js";
 import { registerListBranchesTool } from "./tools/list-branches.js";
+import { registerCommitTool } from "./tools/commit.js";
+import { registerCreateBranchTool } from "./tools/create-branch.js";
+import { registerSwitchBranchTool } from "./tools/switch-branch.js";
 
 interface CliArgs {
   name: string;
@@ -79,7 +82,10 @@ async function main(): Promise<void> {
   registerLogTool(server);
   registerListBranchesTool(server);
 
-  // TODO: Phase 4 — register write tools here
+  // Phase 4: Write tools
+  registerCommitTool(server, args.name);
+  registerCreateBranchTool(server);
+  registerSwitchBranchTool(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
