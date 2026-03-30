@@ -6,12 +6,14 @@ A TypeScript/Node.js MCP server that wraps standard git operations, with a focus
 
 **Primary motivation:** Enable AI agents (Notor workflows, Claude Code) to commit changes to one or more git repositories using a consistent, structured commit message format — without needing to shell out to raw git commands or reimplement the commit message structure in every context.
 
+**Design principle — token minimization:** Every tool schema and tool output is designed to minimize token cost for the calling LLM. This means: omitting parameters that can be inferred, returning only what the LLM needs to act on, and preferring machine-readable formats over human-readable ones. This principle is referenced throughout the doc as decisions are made.
+
 ---
 
 ## CLI Design
 
 ```
-node dist/git/index.js [--repo <name>=<path>]... [--name <prefix>]
+node dist/git/index.js [--repo <name>=<path>]... --name <prefix>
 ```
 
 ### Arguments
@@ -19,12 +21,14 @@ node dist/git/index.js [--repo <name>=<path>]... [--name <prefix>]
 | Flag | Required | Description |
 |------|----------|-------------|
 | `--repo name=path` | No (repeatable) | Maps a logical repo name to an absolute filesystem path. Can be specified multiple times for multi-repo support. |
-| `--name prefix` | No | The prefix used in commit messages, e.g. `Notor` → `[Notor]`. Defaults to `AI` if not provided. |
+| `--name prefix` | **Yes** | The prefix used in commit messages, e.g. `Notor` → `[Notor]`. No default — must be explicitly provided. |
 
-### Repo Resolution
+### Repo Resolution & Tool Schema Behavior
 
-- If one or more `--repo` args are given, tool calls must include a `repo` argument matching one of the registered names.
-- If no `--repo` args are given, the server defaults to the current working directory as the single implicit repo. In this mode, the `repo` argument is not required on tool calls.
+- If **no** `--repo` args are given, the server defaults to the current working directory as the single implicit repo.
+- If **exactly one** `--repo` arg is given, that repo is used implicitly.
+- In both single-repo cases above, the `repo` parameter is **omitted entirely from all tool schemas** — it does not appear in the MCP tool definitions at all. This keeps token cost minimal when the parameter is unnecessary.
+- If **two or more** `--repo` args are given, the `repo` parameter is included in all tool schemas as a required field.
 - Unrecognized `repo` values return a clear error rather than silently failing.
 
 ### Example Registrations
@@ -54,11 +58,11 @@ Returns the working tree status of a repository.
 **Input:**
 ```typescript
 {
-  repo?: string   // omit when server has no named repos (uses cwd)
+  repo?: string   // only present when multiple repos are registered
 }
 ```
 
-**Output:** Formatted git status output (porcelain + human-readable summary).
+**Output:** Porcelain-format status output only (`git status --porcelain`). No human-readable summary — the porcelain format is compact, machine-parseable, and token-efficient.
 
 ---
 
@@ -68,7 +72,7 @@ Returns a git diff for a repository.
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,        // only present when multiple repos are registered
   staged: boolean,      // true = diff --staged, false = diff working tree
   paths?: string[]      // optional: limit diff to specific files/directories
 }
@@ -84,13 +88,13 @@ Returns recent commit history.
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,        // only present when multiple repos are registered
   limit?: number,       // default: 10
   branch?: string       // default: current branch
 }
 ```
 
-**Output:** Formatted list of commits with hash, author, date, and subject line.
+**Output:** List of commits with hash and subject line only (no author, no date). Token-minimal format, one commit per line.
 
 ---
 
@@ -100,7 +104,7 @@ Lists branches in a repository.
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,             // only present when multiple repos are registered
   include_remote?: boolean   // default: false
 }
 ```
@@ -117,7 +121,7 @@ Stages specified files and creates a commit following the project's standard mes
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,            // only present when multiple repos are registered
   files: string[],          // paths to stage, relative to repo root; supports globs
   summary: string,          // one-line action summary (e.g., "Add user auth flow")
   change_details: string[], // bullet-point list of specific changes
@@ -126,7 +130,7 @@ Stages specified files and creates a commit following the project's standard mes
 }
 ```
 
-**Output:** Commit hash + commit message on success; error details on failure.
+**Output:** Commit hash only on success; error details on failure. The commit message is not returned — the LLM already knows what it asked to commit.
 
 **Behavior:**
 - Stages only the files listed in `files` (never a blanket `git add .`)
@@ -142,7 +146,7 @@ Creates a new branch.
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,        // only present when multiple repos are registered
   branch_name: string,
   from_ref?: string     // default: current HEAD
 }
@@ -158,7 +162,7 @@ Checks out an existing branch.
 **Input:**
 ```typescript
 {
-  repo?: string,
+  repo?: string,        // only present when multiple repos are registered
   branch_name: string
 }
 ```
@@ -181,15 +185,19 @@ All commits produced by the `commit` tool follow this format, mirroring the stru
 ---
 
 Workflow: {workflow}
-{human_input}
+Prompt: {human_input}
 ```
 
 **Rules:**
 - `{prefix}` comes from the `--name` CLI arg (e.g., `[Notor]`, `[Claude]`)
 - The `Workflow:` line and its value are omitted entirely if `workflow` is not provided
-- `{human_input}` is always included after the `---` separator
+- `{human_input}` is always included after the `---` separator, prefixed with `Prompt: `
 - Change detail bullets use a single `-` prefix with one space
 - A blank line separates the summary from the bullets, and the bullets from the `---`
+
+**V1 behavior:** The caller provides `human_input` as the verbatim user prompt. The commit tool always writes it with the `Prompt: ` prefix.
+
+**Future (V2+):** When the server can make its own LLM calls, it will determine whether the user prompt is short enough to include verbatim (`Prompt: `) or should be condensed (`Summary: `). See the V2 Roadmap section for details.
 
 **Example:**
 ```
@@ -202,7 +210,7 @@ Workflow: {workflow}
 ---
 
 Workflow: create-template.md
-Create a daily note template that includes a project tracking section and links to open tasks
+Prompt: Create a daily note template that includes a project tracking section and links to open tasks
 ```
 
 ---
@@ -212,8 +220,8 @@ Create a daily note template that includes a project tracking section and links 
 - The server maintains a map of `name → absolute path` built at startup from `--repo` args
 - Each tool call resolves the target repo at request time — there is no per-connection state
 - Concurrent tool calls targeting different repos are safe (no shared mutable state between repo operations)
-- The `repo` field in tool inputs is validated against the registered map; unrecognized values return a descriptive error
-- When no repos are registered, `repo` is ignored and all operations target cwd
+- **Single-repo mode** (0 or 1 `--repo` args): The `repo` parameter is omitted from all tool schemas entirely. All operations target the single implicit repo (cwd or the one named repo).
+- **Multi-repo mode** (2+ `--repo` args): The `repo` parameter appears as a required field in all tool schemas. The `repo` field is validated against the registered map; unrecognized values return a descriptive error.
 
 ---
 
@@ -284,6 +292,15 @@ In V1, the calling LLM (Notor/Claude Code) is responsible for generating `summar
 - Notor exposing a local HTTP endpoint the MCP server can call back into
 
 This design decision is deferred until V1 is stable.
+
+### Prompt vs Summary in Commit Messages
+
+In V1, the caller provides `human_input` and it is always written verbatim with the `Prompt: ` prefix. In V2, the server's internal LLM will decide:
+
+- **Short prompts** (~255 words or less): written verbatim as `Prompt: {text}`
+- **Long prompts**: condensed to ~1 paragraph and written as `Summary: {condensed_text}`
+
+This pairs naturally with the conversation history feature above — if the server has access to the full conversation, it can derive the prompt/summary itself rather than relying on the caller to pass `human_input`.
 
 ### Push / Pull
 
