@@ -8,12 +8,11 @@
 
 Use the Git MCP tools — **not** raw `git` CLI commands — for all git operations:
 
-1. **Check status:** `mcp__git__status` to identify what changed
-2. **Review changes:** `mcp__git__diff` to verify only intended modifications are present
-3. **Commit:** `mcp__git__commit` with:
+1. **Check status:** `mcp__git__status` to identify what changed and ensure only intended files are modified
+2. **Commit:** `mcp__git__commit` with:
    - `files` — only files intentionally modified as part of the task
    - `summary` — concise action summary (e.g., "Add retry logic to API client")
-   - `change_details` — bullet list of specific changes per file
+   - `change_details` — each entry is a plain string (the tool prepends `- ` automatically)
    - `human_input` — the user's prompt (full text if ≤255 words, otherwise summarized to ~1 paragraph)
    - `workflow` — (if an explicit instruction/workflow file is attached) the workflow name from the `type` attribute of the `<explicit_instructions>` tag
 
@@ -35,5 +34,4 @@ Use `mcp__git__create_branch` and `mcp__git__switch_branch` for branch operation
 - Keep commits atomic — one logical unit of work per commit
 
 ## Quality Standards
-- Review diff output before committing to catch unintended modifications
 - Maintain clean, focused commit history
