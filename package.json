@@ -2,6 +2,9 @@
   "name": "zm-mcp",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "zm-mcp-git": "./dist/git/index.js"
+  },
   "scripts": {
     "build": "tsc"
   },
