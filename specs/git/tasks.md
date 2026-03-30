@@ -110,21 +110,31 @@ This is the most complex tool. Implementation steps:
 
 ---
 
-## Phase 5: Integration & Validation
+## Phase 5: Integration & Validation ✅
 
-### 5.1 Build and smoke test
-- Add `build` script to `package.json` (`tsc`)
-- Build the project, fix any type errors
-- Manual smoke test: run the server with `--name Test` in this repo, call each tool via an MCP client or raw stdio JSON-RPC
+### 5.1 Build and smoke test ✅
+- ✅ Add `build` script to `package.json` (`tsc`) — already present from Phase 1
+- ✅ Build the project, fix any type errors — builds clean with no errors
+- ✅ Manual smoke test: run the server with `--name Test` in this repo, call each tool via an MCP client or raw stdio JSON-RPC
+  - ✅ Server starts, all 7 tools register correctly
+  - ✅ `repo` param omitted in single-repo mode
+  - ✅ `status` returns `clean` / porcelain output
+  - ✅ `diff` (staged and unstaged) returns diff or `no changes`
+  - ✅ `log` returns hash + subject lines
+  - ✅ `list_branches` returns branch list with `*` marker
+  - ✅ `create_branch` creates branch and returns ref
+  - ✅ `switch_branch` switches and confirms
+  - ✅ `commit` stages files, creates commit with correct message format, returns hash
 
-### 5.2 Multi-repo smoke test
-- Run with two `--repo` args pointing to different local repos
-- Verify `repo` parameter appears in tool schemas
-- Verify calls to each repo target the correct directory
+### 5.2 Multi-repo smoke test ✅
+- ✅ Run with two `--repo` args pointing to different local repos
+- ✅ Verify `repo` parameter appears in tool schemas as required field
+- ✅ Verify calls to each repo target the correct directory (confirmed via distinct log output)
+- ✅ Verify invalid repo name returns descriptive error listing valid options
 
-### 5.3 Register in Claude Code
-- Add MCP server config to Claude Code settings for local use
-- Verify tools appear and work from a Claude Code session
+### 5.3 Register in Claude Code ✅
+- ✅ Add MCP server config to `.mcp.json` for project-level use
+- Verify tools appear and work from a Claude Code session (requires restart)
 
 ---
 

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "git": {
+      "command": "node",
+      "args": ["dist/git/index.js", "--name", "Claude"]
+    }
+  }
+}
