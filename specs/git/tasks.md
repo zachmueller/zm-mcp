@@ -57,28 +57,28 @@ src/git/
 
 ---
 
-## Phase 3: Read Tools
+## Phase 3: Read Tools ✅
 
 Each tool follows the same pattern: define Zod schema, register via `server.tool()`, call `git-runner`, return text content. The `repo` param is conditionally included based on `isMultiRepo()`.
 
-### 3.1 `status` tool
-- Run `git status --porcelain` in the resolved repo path
-- Return raw porcelain output, or `"clean"` if empty
+### 3.1 `status` tool ✅
+- ✅ Run `git status --porcelain` in the resolved repo path
+- ✅ Return raw porcelain output, or `"clean"` if empty
 
-### 3.2 `diff` tool
-- Accept `staged: boolean` and optional `paths: string[]`
-- Run `git diff [--staged] [-- ...paths]`
-- Return raw diff output, or `"no changes"` if empty
+### 3.2 `diff` tool ✅
+- ✅ Accept `staged: boolean` and optional `paths: string[]`
+- ✅ Run `git diff [--staged] [-- ...paths]`
+- ✅ Return raw diff output, or `"no changes"` if empty
 
-### 3.3 `log` tool
-- Accept optional `limit` (default 10) and `branch`
-- Run `git log --oneline -n {limit} [{branch}]`
-- Return raw output (already token-minimal: hash + subject per line)
+### 3.3 `log` tool ✅
+- ✅ Accept optional `limit` (default 10) and `branch`
+- ✅ Run `git log --oneline -n {limit} [{branch}]`
+- ✅ Return raw output (already token-minimal: hash + subject per line)
 
-### 3.4 `list_branches` tool
-- Accept optional `include_remote` (default false)
-- Run `git branch [--all]` if include_remote, else `git branch`
-- Return branch list with current branch indicated (git already marks it with `*`)
+### 3.4 `list_branches` tool ✅
+- ✅ Accept optional `include_remote` (default false)
+- ✅ Run `git branch [--all]` if include_remote, else `git branch`
+- ✅ Return branch list with current branch indicated (git already marks it with `*`)
 
 ---
 

@@ -1,6 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { initRepoRegistry } from "./repo-registry.js";
+import { registerStatusTool } from "./tools/status.js";
+import { registerDiffTool } from "./tools/diff.js";
+import { registerLogTool } from "./tools/log.js";
+import { registerListBranchesTool } from "./tools/list-branches.js";
 
 interface CliArgs {
   name: string;
@@ -69,8 +73,13 @@ async function main(): Promise<void> {
     version: "0.1.0",
   });
 
-  // TODO: Phase 3 & 4 — register read and write tools here
-  // Tools will be registered using server.registerTool() with the args.name prefix
+  // Phase 3: Read tools
+  registerStatusTool(server);
+  registerDiffTool(server);
+  registerLogTool(server);
+  registerListBranchesTool(server);
+
+  // TODO: Phase 4 — register write tools here
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
